@@ -41,3 +41,8 @@ fn parser() -> impl chumsky::Parser<char, Expr, Error = chumsky::error::Simple<c
 fn addition() {
     assert_eq!(process("3 + 6"), "9".to_string());
 }
+
+#[test]
+fn subtraction() {
+    assert_eq!(process("3 - 6"), "-3".to_string());
+}
