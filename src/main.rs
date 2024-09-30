@@ -8,13 +8,22 @@ enum Expr {
 
 pub fn process(input: &str) -> String {
     let expr = parse(input);
-    todo!()
+    let output = redacted_name(expr);
+    output.to_string()
 }
 
 fn parse(input: &str) -> Expr {
     use chumsky::Parser;
 
     parser().parse(input).unwrap()
+}
+
+// This is named like that to not ruin the surprise for my friend who is working on this challenge
+// too
+fn redacted_name(expr: Expr) -> i32 {
+    match expr {
+        Expr::Add(a, b) => a + b,
+    }
 }
 
 fn parser() -> impl chumsky::Parser<char, Expr, Error = chumsky::error::Simple<char>> {
