@@ -4,6 +4,7 @@ fn main() {
 
 enum Expr {
     Add(i32, i32),
+    Subtract(i32, i32),
 }
 
 pub fn process(input: &str) -> String {
@@ -23,6 +24,7 @@ fn parse(input: &str) -> Expr {
 fn redacted_name(expr: Expr) -> i32 {
     match expr {
         Expr::Add(a, b) => a + b,
+        _ => todo!(),
     }
 }
 
@@ -31,10 +33,14 @@ fn parser() -> impl chumsky::Parser<char, Expr, Error = chumsky::error::Simple<c
 
     let int = text::int(10).map(|s: String| s.parse().unwrap());
     let plus = just('+').padded();
+    let minus = just('-').padded();
 
-    int.then_ignore(plus)
-        .then(int)
-        .map(|(a, b)| Expr::Add(a, b))
+    int.then(
+        plus.to(Expr::Add as fn(_, _) -> _)
+            .or(minus.to(Expr::Subtract as fn(_, _) -> _)),
+    )
+    .then(int)
+    .map(|((a, operation), b)| operation(a, b))
 }
 
 #[test]
