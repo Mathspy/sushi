@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 fn main() {
     println!("Hello, world!");
 }
@@ -24,7 +26,7 @@ enum Expr {
 
 pub fn process(input: &str) -> String {
     let program = parse(input);
-    let output = redacted_name(&program.end_expression);
+    let output = redacted_name(program);
     output.to_string()
 }
 
@@ -36,16 +38,31 @@ fn parse(input: &str) -> Program {
 
 // This is named like that to not ruin the surprise for my friend who is working on this challenge
 // too
-fn redacted_name(expr: &Expr) -> i32 {
-    match expr {
-        Expr::Number(a) => *a,
-        Expr::Ident(_) => todo!(),
-        Expr::Negate(a) => -redacted_name(a),
-        Expr::Add(a, b) => redacted_name(a) + redacted_name(b),
-        Expr::Subtract(a, b) => redacted_name(a) - redacted_name(b),
-        Expr::Multiply(a, b) => redacted_name(a) * redacted_name(b),
-        Expr::Divide(a, b) => redacted_name(a) / redacted_name(b),
+fn redacted_name(program: Program) -> i32 {
+    struct Context {
+        variables: HashMap<String, Expr>,
     }
+
+    fn redacted_name_expr(cx: &Context, expr: &Expr) -> i32 {
+        match expr {
+            Expr::Number(a) => *a,
+            Expr::Ident(ident) => redacted_name_expr(cx, cx.variables.get(ident).unwrap()),
+            Expr::Negate(a) => -redacted_name_expr(cx, a),
+            Expr::Add(a, b) => redacted_name_expr(cx, a) + redacted_name_expr(cx, b),
+            Expr::Subtract(a, b) => redacted_name_expr(cx, a) - redacted_name_expr(cx, b),
+            Expr::Multiply(a, b) => redacted_name_expr(cx, a) * redacted_name_expr(cx, b),
+            Expr::Divide(a, b) => redacted_name_expr(cx, a) / redacted_name_expr(cx, b),
+        }
+    }
+
+    let variables = program
+        .variables
+        .into_iter()
+        .map(|var| (var.name, var.value))
+        .collect::<HashMap<String, Expr>>();
+    let context = Context { variables };
+
+    redacted_name_expr(&context, &program.end_expression)
 }
 
 fn parser() -> impl chumsky::Parser<char, Program, Error = chumsky::error::Simple<char>> {
