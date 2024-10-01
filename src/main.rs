@@ -40,8 +40,7 @@ fn parser() -> impl chumsky::Parser<char, Expr, Error = chumsky::error::Simple<c
     use chumsky::{
         primitive::{end, just},
         recursive::recursive,
-        text,
-        text::TextParser,
+        text::{self, TextParser},
         Parser,
     };
 
