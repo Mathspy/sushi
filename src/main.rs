@@ -76,3 +76,8 @@ fn negative() {
     assert_eq!(process("- 6"), "-6".to_string());
     assert_eq!(process("-6"), "-6".to_string());
 }
+
+#[test]
+fn complex_add_sub() {
+    assert_eq!(process("5 + -3 - 51 - - 7 + 0"), "-42".to_string());
+}
