@@ -2,8 +2,19 @@ fn main() {
     println!("Hello, world!");
 }
 
+struct Math {
+    variables: Vec<Var>,
+    end_expression: Expr,
+}
+
+struct Var {
+    name: String,
+    value: Expr,
+}
+
 enum Expr {
     Number(i32),
+    Ident(String),
     Negate(Box<Expr>),
     Add(Box<Expr>, Box<Expr>),
     Subtract(Box<Expr>, Box<Expr>),
@@ -12,12 +23,12 @@ enum Expr {
 }
 
 pub fn process(input: &str) -> String {
-    let expr = parse(input);
-    let output = redacted_name(&expr);
+    let math = parse(input);
+    let output = redacted_name(&math.end_expression);
     output.to_string()
 }
 
-fn parse(input: &str) -> Expr {
+fn parse(input: &str) -> Math {
     use chumsky::Parser;
 
     parser().parse(input).unwrap()
@@ -28,6 +39,7 @@ fn parse(input: &str) -> Expr {
 fn redacted_name(expr: &Expr) -> i32 {
     match expr {
         Expr::Number(a) => *a,
+        Expr::Ident(_) => todo!(),
         Expr::Negate(a) => -redacted_name(a),
         Expr::Add(a, b) => redacted_name(a) + redacted_name(b),
         Expr::Subtract(a, b) => redacted_name(a) - redacted_name(b),
@@ -36,7 +48,7 @@ fn redacted_name(expr: &Expr) -> i32 {
     }
 }
 
-fn parser() -> impl chumsky::Parser<char, Expr, Error = chumsky::error::Simple<char>> {
+fn parser() -> impl chumsky::Parser<char, Math, Error = chumsky::error::Simple<char>> {
     use chumsky::{
         primitive::{end, just},
         recursive::recursive,
@@ -50,8 +62,11 @@ fn parser() -> impl chumsky::Parser<char, Expr, Error = chumsky::error::Simple<c
     let slash = just('/').padded();
     let open_paren = just('(').padded();
     let close_paren = just(')').padded();
+    let equal = just('=').padded();
 
-    recursive(|expr| {
+    let ident = text::ident().map(Expr::Ident);
+
+    let expr = recursive(|expr| {
         let positive_int = text::int(10)
             .map(|s: String| s.parse::<i32>().unwrap())
             .map(Expr::Number);
@@ -60,7 +75,7 @@ fn parser() -> impl chumsky::Parser<char, Expr, Error = chumsky::error::Simple<c
         let unit = minus
             .padded()
             .repeated()
-            .then(positive_int.or(paren_wrapped_expr))
+            .then(positive_int.or(paren_wrapped_expr).or(ident))
             .foldr(|_minus, expr| Expr::Negate(Box::new(expr)));
 
         let prod_and_div = unit
@@ -82,9 +97,22 @@ fn parser() -> impl chumsky::Parser<char, Expr, Error = chumsky::error::Simple<c
                     .repeated(),
             )
             .foldl(|a, (operation, b)| operation(Box::new(a), Box::new(b)))
-    })
-    .padded()
-    .then_ignore(end())
+    });
+
+    let vars = text::ident()
+        .then_ignore(equal)
+        .then(expr.clone())
+        .padded()
+        .map(|(name, value)| Var { name, value })
+        .repeated();
+
+    vars.then(expr)
+        .map(|(variables, end_expression)| Math {
+            variables,
+            end_expression,
+        })
+        .padded()
+        .then_ignore(end())
 }
 
 #[test]
