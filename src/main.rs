@@ -4,13 +4,13 @@ fn main() {
 
 enum Expr {
     Number(i32),
-    Add(i32, i32),
-    Subtract(i32, i32),
+    Add(Box<Expr>, Box<Expr>),
+    Subtract(Box<Expr>, Box<Expr>),
 }
 
 pub fn process(input: &str) -> String {
     let expr = parse(input);
-    let output = redacted_name(expr);
+    let output = redacted_name(&expr);
     output.to_string()
 }
 
@@ -22,11 +22,11 @@ fn parse(input: &str) -> Expr {
 
 // This is named like that to not ruin the surprise for my friend who is working on this challenge
 // too
-fn redacted_name(expr: Expr) -> i32 {
+fn redacted_name(expr: &Expr) -> i32 {
     match expr {
-        Expr::Number(a) => a,
-        Expr::Add(a, b) => a + b,
-        Expr::Subtract(a, b) => a - b,
+        Expr::Number(a) => *a,
+        Expr::Add(a, b) => redacted_name(a) + redacted_name(b),
+        Expr::Subtract(a, b) => redacted_name(a) - redacted_name(b),
     }
 }
 
@@ -42,7 +42,8 @@ fn parser() -> impl chumsky::Parser<char, Expr, Error = chumsky::error::Simple<c
         .or_not()
         .map(|minus| minus.is_some())
         .then(positive_int)
-        .map(|(is_negative, int)| if is_negative { -int } else { int });
+        .map(|(is_negative, int)| if is_negative { -int } else { int })
+        .map(Expr::Number);
 
     int.then(
         plus.to(Expr::Add as fn(_, _) -> _)
@@ -52,9 +53,9 @@ fn parser() -> impl chumsky::Parser<char, Expr, Error = chumsky::error::Simple<c
     )
     .map(|(a, follow_up)| {
         if let Some((operation, b)) = follow_up {
-            operation(a, b)
+            operation(Box::new(a), Box::new(b))
         } else {
-            Expr::Number(a)
+            a
         }
     })
 }
