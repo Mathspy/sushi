@@ -132,6 +132,7 @@ fn divide() {
 fn order_of_operations() {
     assert_eq!(process("1 + 2 * 3"), "7".to_string());
     assert_eq!(process("(1 + 2) * 3"), "9".to_string());
+    assert_eq!(process(" ( 1 + 2) * 3"), "9".to_string());
 }
 
 #[test]
