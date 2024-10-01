@@ -24,9 +24,9 @@ fn parse(input: &str) -> Expr {
 // too
 fn redacted_name(expr: Expr) -> i32 {
     match expr {
+        Expr::Number(a) => a,
         Expr::Add(a, b) => a + b,
         Expr::Subtract(a, b) => a - b,
-        _ => todo!(),
     }
 }
 
