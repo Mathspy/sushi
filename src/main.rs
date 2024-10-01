@@ -83,6 +83,7 @@ fn parser() -> impl chumsky::Parser<char, Expr, Error = chumsky::error::Simple<c
             )
             .foldl(|a, (operation, b)| operation(Box::new(a), Box::new(b)))
     })
+    .padded()
     .then_ignore(end())
 }
 
