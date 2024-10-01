@@ -54,3 +54,9 @@ fn subtraction() {
     assert_eq!(process("3 - 6"), "-3".to_string());
     assert_eq!(process("3-6"), "-3".to_string());
 }
+
+#[test]
+fn negative() {
+    assert_eq!(process("- 6"), "-6".to_string());
+    assert_eq!(process("-6"), "-6".to_string());
+}
