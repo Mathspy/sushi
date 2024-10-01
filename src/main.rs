@@ -49,15 +49,9 @@ fn parser() -> impl chumsky::Parser<char, Expr, Error = chumsky::error::Simple<c
         plus.to(Expr::Add as fn(_, _) -> _)
             .or(minus.to(Expr::Subtract as fn(_, _) -> _))
             .then(int)
-            .or_not(),
+            .repeated(),
     )
-    .map(|(a, follow_up)| {
-        if let Some((operation, b)) = follow_up {
-            operation(Box::new(a), Box::new(b))
-        } else {
-            a
-        }
-    })
+    .foldl(|a, (operation, b)| operation(Box::new(a), Box::new(b)))
 }
 
 #[test]
