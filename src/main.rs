@@ -198,3 +198,18 @@ fn simple_variable() {
         "8".to_string()
     );
 }
+
+#[test]
+fn milestone_2() {
+    assert_eq!(
+        process(
+            "
+    a = 5 + 3
+    b = 89
+
+    b / a
+    "
+        ),
+        "11".to_string()
+    );
+}
