@@ -101,10 +101,18 @@ fn complex_add_sub() {
 fn multiple() {
     assert_eq!(process("3 * 6"), "18".to_string());
     assert_eq!(process("3*6"), "18".to_string());
+    assert_eq!(process("3*- 6"), "-18".to_string());
 }
 
 #[test]
 fn divide() {
     assert_eq!(process("6 / 3"), "2".to_string());
     assert_eq!(process("6/3"), "2".to_string());
+    assert_eq!(process("6/-3"), "-2".to_string());
+    assert_eq!(process("-6/- 3"), "2".to_string());
+}
+
+#[test]
+fn order_of_operations() {
+    assert_eq!(process("1 + 2 * 3"), "7".to_string());
 }
