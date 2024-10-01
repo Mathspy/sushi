@@ -4,7 +4,7 @@ fn main() {
 
 enum Expr {
     Number(i32),
-    Inverse(Box<Expr>),
+    Negate(Box<Expr>),
     Add(Box<Expr>, Box<Expr>),
     Subtract(Box<Expr>, Box<Expr>),
     Multiply(Box<Expr>, Box<Expr>),
@@ -28,7 +28,7 @@ fn parse(input: &str) -> Expr {
 fn redacted_name(expr: &Expr) -> i32 {
     match expr {
         Expr::Number(a) => *a,
-        Expr::Inverse(a) => -redacted_name(a),
+        Expr::Negate(a) => -redacted_name(a),
         Expr::Add(a, b) => redacted_name(a) + redacted_name(b),
         Expr::Subtract(a, b) => redacted_name(a) - redacted_name(b),
         Expr::Multiply(a, b) => redacted_name(a) * redacted_name(b),
@@ -64,7 +64,7 @@ fn parser() -> impl chumsky::Parser<char, Expr, Error = chumsky::error::Simple<c
             .padded()
             .repeated()
             .then(positive_int.or(paren_wrapped_expr))
-            .foldr(|_minus, expr| Expr::Inverse(Box::new(expr)));
+            .foldr(|_minus, expr| Expr::Negate(Box::new(expr)));
 
         let prod_and_div = unit
             .clone()
