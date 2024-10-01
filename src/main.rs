@@ -4,6 +4,7 @@ fn main() {
 
 enum Expr {
     Number(i32),
+    Inverse(Box<Expr>),
     Add(Box<Expr>, Box<Expr>),
     Subtract(Box<Expr>, Box<Expr>),
 }
@@ -25,6 +26,7 @@ fn parse(input: &str) -> Expr {
 fn redacted_name(expr: &Expr) -> i32 {
     match expr {
         Expr::Number(a) => *a,
+        Expr::Inverse(a) => -redacted_name(a),
         Expr::Add(a, b) => redacted_name(a) + redacted_name(b),
         Expr::Subtract(a, b) => redacted_name(a) - redacted_name(b),
     }
@@ -33,17 +35,17 @@ fn redacted_name(expr: &Expr) -> i32 {
 fn parser() -> impl chumsky::Parser<char, Expr, Error = chumsky::error::Simple<char>> {
     use chumsky::{primitive::just, text, text::TextParser, Parser};
 
-    let positive_int = text::int(10).map(|s: String| s.parse::<i32>().unwrap());
+    let positive_int = text::int(10)
+        .map(|s: String| s.parse::<i32>().unwrap())
+        .map(Expr::Number);
     let plus = just('+').padded();
     let minus = just('-').padded();
 
     let int = minus
         .padded()
-        .or_not()
-        .map(|minus| minus.is_some())
+        .repeated()
         .then(positive_int)
-        .map(|(is_negative, int)| if is_negative { -int } else { int })
-        .map(Expr::Number);
+        .foldr(|_minus, expr| Expr::Inverse(Box::new(expr)));
 
     int.then(
         plus.to(Expr::Add as fn(_, _) -> _)
