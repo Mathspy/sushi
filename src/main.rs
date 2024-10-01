@@ -139,3 +139,17 @@ fn order_of_operations() {
 fn milestone_1() {
     assert_eq!(process("5 + (3 + 7) * 99"), "995".to_string());
 }
+
+#[test]
+fn simple_variable() {
+    assert_eq!(
+        process(
+            "
+    a = 5 + 3
+
+    a
+    "
+        ),
+        "8".to_string()
+    );
+}
