@@ -7,6 +7,8 @@ enum Expr {
     Inverse(Box<Expr>),
     Add(Box<Expr>, Box<Expr>),
     Subtract(Box<Expr>, Box<Expr>),
+    Multiply(Box<Expr>, Box<Expr>),
+    Divide(Box<Expr>, Box<Expr>),
 }
 
 pub fn process(input: &str) -> String {
@@ -29,6 +31,7 @@ fn redacted_name(expr: &Expr) -> i32 {
         Expr::Inverse(a) => -redacted_name(a),
         Expr::Add(a, b) => redacted_name(a) + redacted_name(b),
         Expr::Subtract(a, b) => redacted_name(a) - redacted_name(b),
+        _ => todo!(),
     }
 }
 
@@ -40,6 +43,8 @@ fn parser() -> impl chumsky::Parser<char, Expr, Error = chumsky::error::Simple<c
         .map(Expr::Number);
     let plus = just('+').padded();
     let minus = just('-').padded();
+    let star = just('*').padded();
+    let slash = just('/').padded();
 
     let int = minus
         .padded()
@@ -47,13 +52,23 @@ fn parser() -> impl chumsky::Parser<char, Expr, Error = chumsky::error::Simple<c
         .then(positive_int)
         .foldr(|_minus, expr| Expr::Inverse(Box::new(expr)));
 
-    int.then(
-        plus.to(Expr::Add as fn(_, _) -> _)
-            .or(minus.to(Expr::Subtract as fn(_, _) -> _))
-            .then(int)
-            .repeated(),
-    )
-    .foldl(|a, (operation, b)| operation(Box::new(a), Box::new(b)))
+    let prod_and_div = int
+        .then(
+            star.to(Expr::Multiply as fn(_, _) -> _)
+                .or(slash.to(Expr::Divide as fn(_, _) -> _))
+                .then(int)
+                .repeated(),
+        )
+        .foldl(|a, (operation, b)| operation(Box::new(a), Box::new(b)));
+
+    prod_and_div
+        .then(
+            plus.to(Expr::Add as fn(_, _) -> _)
+                .or(minus.to(Expr::Subtract as fn(_, _) -> _))
+                .then(prod_and_div)
+                .repeated(),
+        )
+        .foldl(|a, (operation, b)| operation(Box::new(a), Box::new(b)))
 }
 
 #[test]
