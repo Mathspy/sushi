@@ -80,3 +80,15 @@ fn negative() {
 fn complex_add_sub() {
     assert_eq!(process("5 + -3 - 51 - - 7 + 0"), "-42".to_string());
 }
+
+#[test]
+fn multiple() {
+    assert_eq!(process("3 * 6"), "18".to_string());
+    assert_eq!(process("3*6"), "18".to_string());
+}
+
+#[test]
+fn divide() {
+    assert_eq!(process("6 / 3"), "2".to_string());
+    assert_eq!(process("6/3"), "2".to_string());
+}
