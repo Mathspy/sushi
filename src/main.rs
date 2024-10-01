@@ -31,7 +31,8 @@ fn redacted_name(expr: &Expr) -> i32 {
         Expr::Inverse(a) => -redacted_name(a),
         Expr::Add(a, b) => redacted_name(a) + redacted_name(b),
         Expr::Subtract(a, b) => redacted_name(a) - redacted_name(b),
-        _ => todo!(),
+        Expr::Multiply(a, b) => redacted_name(a) * redacted_name(b),
+        Expr::Divide(a, b) => redacted_name(a) / redacted_name(b),
     }
 }
 
