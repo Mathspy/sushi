@@ -3,6 +3,7 @@ fn main() {
 }
 
 enum Expr {
+    Number(i32),
     Add(i32, i32),
     Subtract(i32, i32),
 }
@@ -25,22 +26,37 @@ fn redacted_name(expr: Expr) -> i32 {
     match expr {
         Expr::Add(a, b) => a + b,
         Expr::Subtract(a, b) => a - b,
+        _ => todo!(),
     }
 }
 
 fn parser() -> impl chumsky::Parser<char, Expr, Error = chumsky::error::Simple<char>> {
     use chumsky::{primitive::just, text, text::TextParser, Parser};
 
-    let int = text::int(10).map(|s: String| s.parse().unwrap());
+    let positive_int = text::int(10).map(|s: String| s.parse::<i32>().unwrap());
     let plus = just('+').padded();
     let minus = just('-').padded();
 
+    let int = minus
+        .padded()
+        .or_not()
+        .map(|minus| minus.is_some())
+        .then(positive_int)
+        .map(|(is_negative, int)| if is_negative { -int } else { int });
+
     int.then(
         plus.to(Expr::Add as fn(_, _) -> _)
-            .or(minus.to(Expr::Subtract as fn(_, _) -> _)),
+            .or(minus.to(Expr::Subtract as fn(_, _) -> _))
+            .then(int)
+            .or_not(),
     )
-    .then(int)
-    .map(|((a, operation), b)| operation(a, b))
+    .map(|(a, follow_up)| {
+        if let Some((operation, b)) = follow_up {
+            operation(a, b)
+        } else {
+            Expr::Number(a)
+        }
+    })
 }
 
 #[test]
