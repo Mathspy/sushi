@@ -127,3 +127,8 @@ fn order_of_operations() {
     assert_eq!(process("1 + 2 * 3"), "7".to_string());
     assert_eq!(process("(1 + 2) * 3"), "9".to_string());
 }
+
+#[test]
+fn milestone_1() {
+    assert_eq!(process("5 + (3 + 7) * 99"), "995".to_string());
+}
