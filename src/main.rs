@@ -39,13 +39,14 @@ fn redacted_name(expr: &Expr) -> i32 {
 fn parser() -> impl chumsky::Parser<char, Expr, Error = chumsky::error::Simple<char>> {
     use chumsky::{primitive::just, text, text::TextParser, Parser};
 
-    let positive_int = text::int(10)
-        .map(|s: String| s.parse::<i32>().unwrap())
-        .map(Expr::Number);
     let plus = just('+').padded();
     let minus = just('-').padded();
     let star = just('*').padded();
     let slash = just('/').padded();
+
+    let positive_int = text::int(10)
+        .map(|s: String| s.parse::<i32>().unwrap())
+        .map(Expr::Number);
 
     let int = minus
         .padded()
