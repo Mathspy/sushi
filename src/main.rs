@@ -55,9 +55,7 @@ fn parser() -> impl chumsky::Parser<char, Expr, Error = chumsky::error::Simple<c
         let positive_int = text::int(10)
             .map(|s: String| s.parse::<i32>().unwrap())
             .map(Expr::Number);
-        let paren_wrapped_expr = open_paren
-            .ignore_then(expr.clone())
-            .then_ignore(close_paren);
+        let paren_wrapped_expr = expr.clone().delimited_by(open_paren, close_paren);
 
         let unit = minus
             .padded()
