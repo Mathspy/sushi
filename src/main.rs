@@ -37,40 +37,49 @@ fn redacted_name(expr: &Expr) -> i32 {
 }
 
 fn parser() -> impl chumsky::Parser<char, Expr, Error = chumsky::error::Simple<char>> {
-    use chumsky::{primitive::just, text, text::TextParser, Parser};
+    use chumsky::{primitive::just, recursive::recursive, text, text::TextParser, Parser};
 
     let plus = just('+').padded();
     let minus = just('-').padded();
     let star = just('*').padded();
     let slash = just('/').padded();
+    let open_paren = just('(').padded();
+    let close_paren = just(')').padded();
 
-    let positive_int = text::int(10)
-        .map(|s: String| s.parse::<i32>().unwrap())
-        .map(Expr::Number);
+    recursive(|expr| {
+        let positive_int = text::int(10)
+            .map(|s: String| s.parse::<i32>().unwrap())
+            .map(Expr::Number);
+        let paren_wrapped_expr = open_paren
+            .ignore_then(expr.clone())
+            .then_ignore(close_paren);
 
-    let int = minus
-        .padded()
-        .repeated()
-        .then(positive_int)
-        .foldr(|_minus, expr| Expr::Inverse(Box::new(expr)));
+        let unit = minus
+            .padded()
+            .repeated()
+            .then(positive_int.or(paren_wrapped_expr))
+            .foldr(|_minus, expr| Expr::Inverse(Box::new(expr)));
 
-    let prod_and_div = int
-        .then(
-            star.to(Expr::Multiply as fn(_, _) -> _)
-                .or(slash.to(Expr::Divide as fn(_, _) -> _))
-                .then(int)
-                .repeated(),
-        )
-        .foldl(|a, (operation, b)| operation(Box::new(a), Box::new(b)));
+        let prod_and_div = unit
+            .clone()
+            .then(
+                star.to(Expr::Multiply as fn(_, _) -> _)
+                    .or(slash.to(Expr::Divide as fn(_, _) -> _))
+                    .then(unit)
+                    .repeated(),
+            )
+            .foldl(|a, (operation, b)| operation(Box::new(a), Box::new(b)));
 
-    prod_and_div
-        .then(
-            plus.to(Expr::Add as fn(_, _) -> _)
-                .or(minus.to(Expr::Subtract as fn(_, _) -> _))
-                .then(prod_and_div)
-                .repeated(),
-        )
-        .foldl(|a, (operation, b)| operation(Box::new(a), Box::new(b)))
+        prod_and_div
+            .clone()
+            .then(
+                plus.to(Expr::Add as fn(_, _) -> _)
+                    .or(minus.to(Expr::Subtract as fn(_, _) -> _))
+                    .then(prod_and_div)
+                    .repeated(),
+            )
+            .foldl(|a, (operation, b)| operation(Box::new(a), Box::new(b)))
+    })
 }
 
 #[test]
