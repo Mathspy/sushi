@@ -37,7 +37,13 @@ fn redacted_name(expr: &Expr) -> i32 {
 }
 
 fn parser() -> impl chumsky::Parser<char, Expr, Error = chumsky::error::Simple<char>> {
-    use chumsky::{primitive::just, recursive::recursive, text, text::TextParser, Parser};
+    use chumsky::{
+        primitive::{end, just},
+        recursive::recursive,
+        text,
+        text::TextParser,
+        Parser,
+    };
 
     let plus = just('+').padded();
     let minus = just('-').padded();
@@ -80,6 +86,7 @@ fn parser() -> impl chumsky::Parser<char, Expr, Error = chumsky::error::Simple<c
             )
             .foldl(|a, (operation, b)| operation(Box::new(a), Box::new(b)))
     })
+    .then_ignore(end())
 }
 
 #[test]
