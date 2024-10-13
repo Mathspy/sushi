@@ -261,3 +261,19 @@ fn milestone_2() {
         "11".to_string()
     );
 }
+
+#[test]
+fn milestone_3() {
+    assert_eq!(
+        process_with_seed(
+            "
+    a = RAND
+    b = RAND
+
+    a + b
+    ",
+            42
+        ),
+        "55".to_string()
+    );
+}
