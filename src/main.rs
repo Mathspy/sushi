@@ -24,8 +24,14 @@ enum Expr {
 }
 
 pub fn process(input: &str) -> String {
+    let mut seed = [0u8; 8];
+    getrandom::getrandom(&mut seed).expect("OS to seed us");
+    process_with_seed(input, u64::from_be_bytes(seed))
+}
+
+pub fn process_with_seed(input: &str, seed: u64) -> String {
     let math = parse(input);
-    let context = context::Context::builtins();
+    let context = context::Context::builtins(seed);
     let output = redacted_name(context, math);
     output.to_string()
 }
@@ -50,9 +56,15 @@ mod context {
     }
 
     impl Context {
-        pub(crate) fn builtins() -> Self {
+        pub(crate) fn builtins(seed: u64) -> Self {
+            let mut rng = oorandom::Rand32::new(seed);
             Context {
-                identifiers: HashMap::new(),
+                identifiers: HashMap::from([(
+                    "RAND".to_string(),
+                    Identifier::Utility(RefCell::new(Box::new(move || {
+                        Expr::Number(rng.rand_range(0..100) as i32)
+                    }))),
+                )]),
             }
         }
 
