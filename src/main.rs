@@ -38,10 +38,11 @@ fn parse(input: &str) -> Math {
 
 mod context {
     use super::Expr;
-    use std::collections::HashMap;
+    use std::{cell::RefCell, collections::HashMap};
 
     pub(crate) enum Identifier {
         Expr(Expr),
+        Utility(RefCell<Box<dyn FnMut() -> Expr>>),
     }
 
     pub(crate) struct Context {
@@ -72,6 +73,7 @@ mod context {
         pub(crate) fn get(&self, id: &str) -> Expr {
             match self.identifiers.get(id) {
                 Some(Identifier::Expr(expr)) => expr.clone(),
+                Some(Identifier::Utility(util)) => util.borrow_mut()(),
                 None => panic!("unknown identifier {id}"),
             }
         }
