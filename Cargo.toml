@@ -7,3 +7,5 @@ edition = "2021"
 
 [dependencies]
 chumsky = "0.9.3"
+getrandom = "0.2.15"
+oorandom = "11.1.4"
