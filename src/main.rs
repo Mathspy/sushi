@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 fn main() {
     println!("Hello, world!");
 }
@@ -14,6 +12,7 @@ struct Var {
     value: Expr,
 }
 
+#[derive(Clone)]
 enum Expr {
     Number(i32),
     Ident(String),
@@ -26,7 +25,8 @@ enum Expr {
 
 pub fn process(input: &str) -> String {
     let math = parse(input);
-    let output = redacted_name(math);
+    let context = context::Context::builtins();
+    let output = redacted_name(context, math);
     output.to_string()
 }
 
@@ -36,14 +36,52 @@ fn parse(input: &str) -> Math {
     parser().parse(input).unwrap()
 }
 
-struct Context {
-    variables: HashMap<String, Expr>,
+mod context {
+    use super::Expr;
+    use std::collections::HashMap;
+
+    pub(crate) enum Identifier {
+        Expr(Expr),
+    }
+
+    pub(crate) struct Context {
+        identifiers: HashMap<String, Identifier>,
+    }
+
+    impl Context {
+        pub(crate) fn builtins() -> Self {
+            Context {
+                identifiers: HashMap::new(),
+            }
+        }
+
+        pub(crate) fn with_variables<I>(self, variables: I) -> Self
+        where
+            I: IntoIterator<Item = (String, Expr)>,
+        {
+            let mut identifiers = self.identifiers;
+            identifiers.extend(
+                variables
+                    .into_iter()
+                    .map(|(id, expr)| (id, Identifier::Expr(expr))),
+            );
+
+            Context { identifiers }
+        }
+
+        pub(crate) fn get(&self, id: &str) -> Expr {
+            match self.identifiers.get(id) {
+                Some(Identifier::Expr(expr)) => expr.clone(),
+                None => panic!("unknown identifier {id}"),
+            }
+        }
+    }
 }
 
-fn redacted_name_expr(cx: &Context, expr: &Expr) -> i32 {
+fn redacted_name_expr(cx: &context::Context, expr: &Expr) -> i32 {
     match expr {
         Expr::Number(a) => *a,
-        Expr::Ident(ident) => redacted_name_expr(cx, cx.variables.get(ident).unwrap()),
+        Expr::Ident(ident) => redacted_name_expr(cx, &cx.get(ident)),
         Expr::Negate(a) => -redacted_name_expr(cx, a),
         Expr::Add(a, b) => redacted_name_expr(cx, a) + redacted_name_expr(cx, b),
         Expr::Subtract(a, b) => redacted_name_expr(cx, a) - redacted_name_expr(cx, b),
@@ -54,15 +92,11 @@ fn redacted_name_expr(cx: &Context, expr: &Expr) -> i32 {
 
 // This is named like that to not ruin the surprise for my friend who is working on this challenge
 // too
-fn redacted_name(math: Math) -> i32 {
-    let variables = math
-        .variables
-        .into_iter()
-        .map(|var| (var.name, var.value))
-        .collect::<HashMap<String, Expr>>();
-    let context = Context { variables };
+fn redacted_name(cx: context::Context, math: Math) -> i32 {
+    let variables = math.variables.into_iter().map(|var| (var.name, var.value));
+    let cx = cx.with_variables(variables);
 
-    redacted_name_expr(&context, &math.end_expression)
+    redacted_name_expr(&cx, &math.end_expression)
 }
 
 fn parser() -> impl chumsky::Parser<char, Math, Error = chumsky::error::Simple<char>> {
