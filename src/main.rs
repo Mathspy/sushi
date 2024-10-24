@@ -42,8 +42,8 @@ pub fn process(input: &str) -> String {
 pub fn process_with_seed(input: &str, seed: u64) -> String {
     let math = parse(input);
     let context = context::Context::builtins(seed);
-    let output = redacted_name(context, math);
-    output.to_string()
+    let (output, final_output) = redacted_name(context, math);
+    format!("{output}{final_output}")
 }
 
 fn parse(input: &str) -> Math {
@@ -56,50 +56,83 @@ mod context {
     use crate::redacted_name_expr;
 
     use super::Expr;
-    use std::{cell::RefCell, collections::HashMap};
+    use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
     pub(crate) enum Identifier {
         Expr(Expr),
-        Utility(RefCell<Box<dyn FnMut() -> Expr>>),
+        Utility(RefCell<Box<dyn FnMut(Option<i32>) -> Expr>>),
     }
 
     pub(crate) struct Context {
         identifiers: HashMap<String, Identifier>,
+        output: Rc<RefCell<String>>,
     }
 
     impl Context {
         pub(crate) fn builtins(seed: u64) -> Self {
             let mut rng = oorandom::Rand32::new(seed);
+            let output = Rc::new(RefCell::new(String::new()));
             Context {
-                identifiers: HashMap::from([(
-                    "RAND".to_string(),
-                    Identifier::Utility(RefCell::new(Box::new(move || {
-                        Expr::Number(rng.rand_range(0..100) as i32)
-                    }))),
-                )]),
+                identifiers: HashMap::from([
+                    (
+                        "RAND".to_string(),
+                        Identifier::Utility(RefCell::new(Box::new(move |_| {
+                            Expr::Number(rng.rand_range(0..100) as i32)
+                        }))),
+                    ),
+                    (
+                        "PRINT".to_string(),
+                        Identifier::Utility(RefCell::new(Box::new({
+                            use std::fmt::Write;
+
+                            let output = Rc::clone(&output);
+
+                            move |input| {
+                                let _ = writeln!(
+                                    output.borrow_mut(),
+                                    "{}",
+                                    &input.expect("print requires an expression")
+                                );
+
+                                // TODO: Hacky
+                                Expr::Number(0)
+                            }
+                        }))),
+                    ),
+                ]),
+                calculated: RefCell::default(),
+                output,
             }
         }
 
-        pub(crate) fn with_variables<I>(self, variables: I) -> Self
+        pub(crate) fn with_variables<I>(mut self, variables: I) -> Self
         where
             I: IntoIterator<Item = (String, Expr)>,
         {
-            let mut identifiers = self.identifiers;
-            identifiers.extend(
+            self.identifiers.extend(
                 variables
                     .into_iter()
                     .map(|(id, expr)| (id, Identifier::Expr(expr))),
             );
 
-            Context { identifiers }
+            self
         }
 
-        pub(crate) fn redacted_name_identifier(&self, id: &str) -> i32 {
+        pub(crate) fn redacted_name_identifier(&self, id: &str, input: Option<i32>) -> i32 {
             match self.identifiers.get(id) {
                 Some(Identifier::Expr(expr)) => redacted_name_expr(self, expr),
-                Some(Identifier::Utility(util)) => redacted_name_expr(self, &util.borrow_mut()()),
+                Some(Identifier::Utility(util)) => {
+                    redacted_name_expr(self, &util.borrow_mut()(input))
+                }
                 None => panic!("unknown identifier {id}"),
             }
+        }
+
+        pub fn into_output(self) -> String {
+            drop(self.identifiers);
+            Rc::into_inner(self.output)
+                .expect("all references to be dropped")
+                .into_inner()
         }
     }
 }
@@ -107,7 +140,7 @@ mod context {
 fn redacted_name_expr(cx: &context::Context, expr: &Expr) -> i32 {
     match expr {
         Expr::Number(a) => *a,
-        Expr::Ident(ident) => cx.redacted_name_identifier(ident),
+        Expr::Ident(ident) => cx.redacted_name_identifier(ident, None),
         Expr::Negate(a) => -redacted_name_expr(cx, a),
         Expr::Add(a, b) => redacted_name_expr(cx, a) + redacted_name_expr(cx, b),
         Expr::Subtract(a, b) => redacted_name_expr(cx, a) - redacted_name_expr(cx, b),
@@ -118,18 +151,31 @@ fn redacted_name_expr(cx: &context::Context, expr: &Expr) -> i32 {
 
 // This is named like that to not ruin the surprise for my friend who is working on this challenge
 // too
-fn redacted_name(cx: context::Context, math: Math) -> i32 {
-    let variables = math
-        .init
-        .into_iter()
-        .filter_map(|init| match init {
-            Init::Var(var) => Some(var),
-            Init::UtilityUse(_) => None,
-        })
-        .map(|var| (var.name, var.value));
+fn redacted_name(cx: context::Context, math: Math) -> (String, i32) {
+    let (variables, utility_uses) = math.init.into_iter().fold(
+        (Vec::new(), Vec::new()),
+        |(mut variables, mut utility_uses), init| {
+            match init {
+                Init::Var(var) => variables.push((var.name, var.value)),
+                Init::UtilityUse(utility_use) => utility_uses.push(utility_use),
+            };
+
+            (variables, utility_uses)
+        },
+    );
+
     let cx = cx.with_variables(variables);
 
-    redacted_name_expr(&cx, &math.end_expression)
+    utility_uses.into_iter().for_each(|utility_use| {
+        cx.redacted_name_identifier(
+            &utility_use.ident,
+            Some(redacted_name_expr(&cx, &utility_use.param)),
+        );
+    });
+
+    let final_output = redacted_name_expr(&cx, &math.end_expression);
+
+    (cx.into_output(), final_output)
 }
 
 fn parser() -> impl chumsky::Parser<char, Math, Error = chumsky::error::Simple<char>> {
