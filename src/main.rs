@@ -377,3 +377,24 @@ fn simple_print() {
         "8\n8".to_string()
     );
 }
+
+#[test]
+fn milestone_4() {
+    assert_eq!(
+        process_with_seed(
+            "
+    a = RAND
+
+    PRINT a
+
+    b = RAND
+
+    PRINT b
+
+    a + b
+    ",
+            42
+        ),
+        "11\n44\n55".to_string()
+    );
+}
