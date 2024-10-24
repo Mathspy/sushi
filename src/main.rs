@@ -36,25 +36,25 @@ fn parse(input: &str) -> Math {
     parser().parse(input).unwrap()
 }
 
+struct Context {
+    variables: HashMap<String, Expr>,
+}
+
+fn redacted_name_expr(cx: &Context, expr: &Expr) -> i32 {
+    match expr {
+        Expr::Number(a) => *a,
+        Expr::Ident(ident) => redacted_name_expr(cx, cx.variables.get(ident).unwrap()),
+        Expr::Negate(a) => -redacted_name_expr(cx, a),
+        Expr::Add(a, b) => redacted_name_expr(cx, a) + redacted_name_expr(cx, b),
+        Expr::Subtract(a, b) => redacted_name_expr(cx, a) - redacted_name_expr(cx, b),
+        Expr::Multiply(a, b) => redacted_name_expr(cx, a) * redacted_name_expr(cx, b),
+        Expr::Divide(a, b) => redacted_name_expr(cx, a) / redacted_name_expr(cx, b),
+    }
+}
+
 // This is named like that to not ruin the surprise for my friend who is working on this challenge
 // too
 fn redacted_name(math: Math) -> i32 {
-    struct Context {
-        variables: HashMap<String, Expr>,
-    }
-
-    fn redacted_name_expr(cx: &Context, expr: &Expr) -> i32 {
-        match expr {
-            Expr::Number(a) => *a,
-            Expr::Ident(ident) => redacted_name_expr(cx, cx.variables.get(ident).unwrap()),
-            Expr::Negate(a) => -redacted_name_expr(cx, a),
-            Expr::Add(a, b) => redacted_name_expr(cx, a) + redacted_name_expr(cx, b),
-            Expr::Subtract(a, b) => redacted_name_expr(cx, a) - redacted_name_expr(cx, b),
-            Expr::Multiply(a, b) => redacted_name_expr(cx, a) * redacted_name_expr(cx, b),
-            Expr::Divide(a, b) => redacted_name_expr(cx, a) / redacted_name_expr(cx, b),
-        }
-    }
-
     let variables = math
         .variables
         .into_iter()
