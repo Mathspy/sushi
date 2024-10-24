@@ -53,6 +53,8 @@ fn parse(input: &str) -> Math {
 }
 
 mod context {
+    use crate::redacted_name_expr;
+
     use super::Expr;
     use std::{cell::RefCell, collections::HashMap};
 
@@ -92,10 +94,10 @@ mod context {
             Context { identifiers }
         }
 
-        pub(crate) fn get(&self, id: &str) -> Expr {
+        pub(crate) fn redacted_name_identifier(&self, id: &str) -> i32 {
             match self.identifiers.get(id) {
-                Some(Identifier::Expr(expr)) => expr.clone(),
-                Some(Identifier::Utility(util)) => util.borrow_mut()(),
+                Some(Identifier::Expr(expr)) => redacted_name_expr(self, expr),
+                Some(Identifier::Utility(util)) => redacted_name_expr(self, &util.borrow_mut()()),
                 None => panic!("unknown identifier {id}"),
             }
         }
@@ -105,7 +107,7 @@ mod context {
 fn redacted_name_expr(cx: &context::Context, expr: &Expr) -> i32 {
     match expr {
         Expr::Number(a) => *a,
-        Expr::Ident(ident) => redacted_name_expr(cx, &cx.get(ident)),
+        Expr::Ident(ident) => cx.redacted_name_identifier(ident),
         Expr::Negate(a) => -redacted_name_expr(cx, a),
         Expr::Add(a, b) => redacted_name_expr(cx, a) + redacted_name_expr(cx, b),
         Expr::Subtract(a, b) => redacted_name_expr(cx, a) - redacted_name_expr(cx, b),
