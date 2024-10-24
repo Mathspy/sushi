@@ -65,6 +65,7 @@ mod context {
 
     pub(crate) struct Context {
         identifiers: HashMap<String, Identifier>,
+        computed: RefCell<HashMap<String, i32>>,
         output: Rc<RefCell<String>>,
     }
 
@@ -100,7 +101,7 @@ mod context {
                         }))),
                     ),
                 ]),
-                calculated: RefCell::default(),
+                computed: RefCell::default(),
                 output,
             }
         }
@@ -119,8 +120,18 @@ mod context {
         }
 
         pub(crate) fn redacted_name_identifier(&self, id: &str, input: Option<i32>) -> i32 {
+            if let Some(output) = self.computed.borrow().get(id) {
+                return *output;
+            }
+
             match self.identifiers.get(id) {
-                Some(Identifier::Expr(expr)) => redacted_name_expr(self, expr),
+                Some(Identifier::Expr(expr)) => {
+                    let output = redacted_name_expr(self, expr);
+
+                    self.computed.borrow_mut().insert(id.to_string(), output);
+
+                    output
+                }
                 Some(Identifier::Utility(util)) => {
                     redacted_name_expr(self, &util.borrow_mut()(input))
                 }
