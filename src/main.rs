@@ -3,13 +3,23 @@ fn main() {
 }
 
 struct Math {
-    variables: Vec<Var>,
+    init: Vec<Init>,
     end_expression: Expr,
+}
+
+enum Init {
+    Var(Var),
+    UtilityUse(UtilityUse),
 }
 
 struct Var {
     name: String,
     value: Expr,
+}
+
+struct UtilityUse {
+    ident: String,
+    param: Expr,
 }
 
 #[derive(Clone)]
@@ -107,7 +117,14 @@ fn redacted_name_expr(cx: &context::Context, expr: &Expr) -> i32 {
 // This is named like that to not ruin the surprise for my friend who is working on this challenge
 // too
 fn redacted_name(cx: context::Context, math: Math) -> i32 {
-    let variables = math.variables.into_iter().map(|var| (var.name, var.value));
+    let variables = math
+        .init
+        .into_iter()
+        .filter_map(|init| match init {
+            Init::Var(var) => Some(var),
+            Init::UtilityUse(_) => None,
+        })
+        .map(|var| (var.name, var.value));
     let cx = cx.with_variables(variables);
 
     redacted_name_expr(&cx, &math.end_expression)
@@ -164,16 +181,25 @@ fn parser() -> impl chumsky::Parser<char, Math, Error = chumsky::error::Simple<c
             .foldl(|a, (operation, b)| operation(Box::new(a), Box::new(b)))
     });
 
-    let vars = text::ident()
+    let var = text::ident()
         .then_ignore(equal)
         .then(expr.clone())
         .padded()
-        .map(|(name, value)| Var { name, value })
+        .map(|(name, value)| Var { name, value });
+
+    let utility_use = text::ident()
+        .then(expr.clone().padded())
+        .map(|(ident, param)| UtilityUse { ident, param });
+
+    let init = utility_use
+        .map(Init::UtilityUse)
+        .or(var.map(Init::Var))
+        .padded()
         .repeated();
 
-    vars.then(expr)
-        .map(|(variables, end_expression)| Math {
-            variables,
+    init.then(expr)
+        .map(|(init, end_expression)| Math {
+            init,
             end_expression,
         })
         .padded()
