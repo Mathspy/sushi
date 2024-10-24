@@ -277,3 +277,18 @@ fn milestone_3() {
         "55".to_string()
     );
 }
+
+#[test]
+fn simple_print() {
+    assert_eq!(
+        process(
+            "
+    a = 5 + 3
+    PRINT a
+
+    a
+    "
+        ),
+        "8\n8".to_string()
+    );
+}
